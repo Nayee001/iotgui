@@ -44,30 +44,6 @@ class LoginScreen(tk.Frame):
 
         self.pack_propagate(False)
 
-    # def login(self):
-    #     username = self.username_entry.get()
-    #     password = self.password_entry.get()
-    #     if username == "nayee001@gannon.edu" and password == "Gannon":
-    #         # Hide error message if login is successful
-    #         self.error_label.config(text="")
-    #         # Show success popup
-    #         message.MessagePopup.show_success(self, "Please wait for a moment")
-    #         # Wait for 2-3 seconds in a non-blocking way, then proceed
-    #         threading.Thread(target=self.after_login).start()
-    #     elif username == "" and password == "":
-    #         self.error_label.config(text="Enter Username Password.")
-    #     else:
-    #         # Show error message
-    #         self.error_label.config(text="Invalid username or password.")
-    
-    # def after_login(self):
-    #     # Sleep for 2-3 seconds
-    #     time.sleep(3)
-    #     # Store session locally
-    #     self.store_session()
-    #     # Switch to the next screen
-    #     self.controller.switch_view('VerifyDevice') # Adjust 'next_screen_name' as needed
-
     def login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
@@ -88,13 +64,14 @@ class LoginScreen(tk.Frame):
     def after_login(self):
         # This method now is expected to be called from the main thread
         # Store session locally
-        self.store_session()
+        # self.store_session()
         # Switch to the next screen
         self.controller.switch_view('VerifyDevice')  # Proceed to verify device screen
 
 
     def store_session(self, token):
         # Storing the bearer token in a file
+        print(token)
         with open("session.txt", "w") as session_file:
             session_file.write(f"session_active=True\ntoken={token}")
 
