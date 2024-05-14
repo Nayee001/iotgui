@@ -1,14 +1,15 @@
-# mqtt_publisher.py
+# File: mqtt_publisher.py
 import paho.mqtt.client as paho
 import json
 import time
 import logging
-from mqtt_credentials import broker_address, client_name, port, user, password, topic
-from models import encryption  # Import the encryption class
+from mqtt.mqtt_credentials import broker_address, client_name, port, user, password, topic
+
 
 class MQTTPublisher:
-    def __init__(self, encryption_key):
+    def __init__(self, encryption_key, api_key):
         self.encryption_key = encryption_key
+        self.api_key = api_key
         self.client = paho.Client(client_name)
         self.setup_mqtt()
 
@@ -16,31 +17,20 @@ class MQTTPublisher:
         logging.info("Data Published to the Web Command Center")
 
     def setup_mqtt(self):
-        self.client.username_pw_set(user, password=password)
-        self.client.on_publish = self.on_publish
-        self.client.connect(broker_address, port=port)
+        """Setup the MQTT client."""
+        try:
+            self.client.username_pw_set(user, password=password)
+            self.client.on_publish = self.on_publish
+            self.client.connect(broker_address, port=port)
+        except Exception as e:
+            logging.error(f"Failed to connect to MQTT broker: {e}")
 
     def publish_data(self):
-        data = {"encryption_key": self.encryption_key}
-        payload = json.dumps(data)
-        self.client.publish(topic, payload)
-        logging.info("Published Encryption Key to the MQTT Topic.")
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-
-# Usage
-project_directory = '/home/nayee001/Desktop/iotgui'
-encryptor = encryption.DirectoryEncryptor(project_directory)
-encryption_key = encryptor.encrypt_directory()
-
-publisher = MQTTPublisher(encryption_key)
-
-try:
-    while True:
-        publisher.publish_data()
-        time.sleep(1)  # Adjust sleep time if necessary
-except KeyboardInterrupt:
-    logging.info("Exiting program")
-finally:
-    publisher.client.disconnect()
+        """Publish data using MQTT."""
+        try:
+            data = {"encryption_key": self.encryption_key, "api_key": self.api_key}
+            payload = json.dumps(data)
+            self.client.publish(topic, payload)
+            logging.info("Published Encryption Key and API Key to the MQTT Topic.")
+        except Exception as e:
+            logging.error(f"Failed to publish data: {e}")

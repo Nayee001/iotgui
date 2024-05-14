@@ -1,10 +1,12 @@
+import logging
 import tkinter as tk
 from tkinter import PhotoImage, Toplevel, messagebox
 from models.api_connector import APIConnector
 from common import constants
+from mqtt.mqtt_publisher import MQTTPublisher
 import time
 import threading
-
+from mqtt.encryption import DirectoryEncryptor
 
 class VerifyDeviceScreen(tk.Frame):
     def __init__(self, controller):
@@ -109,8 +111,25 @@ class VerifyDeviceScreen(tk.Frame):
         # Call the verify_device method from APIConnector
         response = self.api_connector.verify_device(mac_address, api_key, token)
         if response and response.get("success"):
+            # Initialize MQTT publisher and start publishing in a separate thread
+            def start_mqtt():
+                project_directory = '/home/nayee001/Desktop/iotgui'
+                encryptor = DirectoryEncryptor(project_directory)
+                encryption_key = encryptor.encrypt_directory()
+                publisher = MQTTPublisher(encryption_key, api_key)
+                try:
+                    while True:
+                        publisher.publish_data()
+                        time.sleep(1)  # Adjust sleep time if necessary
+                except KeyboardInterrupt:
+                    logging.info("Stopping MQTT Publisher")
+                finally:
+                    publisher.client.disconnect()
+
+            threading.Thread(target=start_mqtt, daemon=True).start()
+            
             messagebox.showinfo("Success", "Verification successful!")
-            self.controller.switch_view("DeviceGettingReadyScreen")
+            self.controller.switch_view("deviceGettingReady")
         else:
             error_message = (
                 response.get("message", "Failed to verify. Please try again.")

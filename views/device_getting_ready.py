@@ -8,7 +8,7 @@ class DeviceGettingReadyScreen(tk.Frame):
         self.controller = controller
 
         # Message Label
-        message_label = tk.Label(self, text="Device is Getting Ready...\nPlease do not power off the device during this process.",
+        message_label = tk.Label(self, text="Please Check Command Center or Emails\n Accept your device from your command center\nPlease do not power off the device during this process.",
                                  font=("Arial", 14), bg='white', justify=tk.CENTER, padx=20)
         message_label.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
 
