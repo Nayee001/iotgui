@@ -13,7 +13,7 @@ class DeviceGettingReadyScreen(tk.Frame):
         message_label.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
 
         # Schedule the dashboard button to appear after a few seconds
-        self.after(5000, self.show_dashboard_button)  # 5000 milliseconds = 5 seconds
+        # self.after(5000, self.show_dashboard_button)  # 5000 milliseconds = 5 seconds
 
     def show_dashboard_button(self):
         # Button to proceed to the dashboard, appears after delay

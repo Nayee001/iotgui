@@ -1,11 +1,11 @@
 import logging
 import tkinter as tk
-from tkinter import PhotoImage, Toplevel, messagebox
+from tkinter import PhotoImage, messagebox
 from models.api_connector import APIConnector
 from common import constants
 from mqtt.mqtt_publisher import MQTTPublisher
-import time
 import threading
+import time
 from mqtt.encryption import DirectoryEncryptor
 
 class VerifyDeviceScreen(tk.Frame):
@@ -17,14 +17,13 @@ class VerifyDeviceScreen(tk.Frame):
             bg="white",
         )
         self.controller = controller
-        self.api_connector = APIConnector(
-            "http://172.20.120.101"
-        )  # Initialize with base URL
+        self.api_connector = APIConnector("http://172.20.120.101")  # Initialize with base URL
 
         # Logo and Title
         self.logo_image = PhotoImage(file="iot.png")  # Ensure this path is correct
         logo_label = tk.Label(self, image=self.logo_image, bg="white")
         logo_label.pack(pady=(30, 10))
+
         title_label = tk.Label(
             self, text="Verify Device", font=("Arial", 24), bg="white"
         )
@@ -67,20 +66,19 @@ class VerifyDeviceScreen(tk.Frame):
         self.pack_propagate(False)
 
     def show_mac_address_popup(self):
-        self.popup = Toplevel(self)
-        self.popup.title("Device MAC Address")
-        self.popup.geometry("400x150")
+        popup = tk.Toplevel(self)
+        popup.title("Device MAC Address")
+        popup.geometry("400x150")
 
         mac_address = self.get_device_mac_address()
-
-        tk.Label(self.popup, text="MAC Address", font=("Arial", 12)).pack(pady=(10, 5))
-        mac_entry = tk.Entry(self.popup, font=("Arial", 12), justify="center")
+        tk.Label(popup, text="MAC Address", font=("Arial", 12)).pack(pady=(10, 5))
+        mac_entry = tk.Entry(popup, font=("Arial", 12), justify="center")
         mac_entry.insert(0, mac_address)
         mac_entry.pack(pady=(5, 20))
         mac_entry.configure(state="readonly")
 
         copy_button = tk.Button(
-            self.popup,
+            popup,
             text="Copy MAC Address",
             command=lambda: self.copy_to_clipboard(mac_address),
         )
@@ -89,29 +87,29 @@ class VerifyDeviceScreen(tk.Frame):
     def copy_to_clipboard(self, text):
         self.clipboard_clear()
         self.clipboard_append(text)
-        messagebox.showinfo(
-            "Info", "MAC Address copied to clipboard!"
-        )  # Changed to use messagebox for simplicity
+        messagebox.showinfo("Info", "MAC Address copied to clipboard!")
 
     def get_device_mac_address(self):
         # Implement your method to retrieve the MAC address here
         return "A-B-C-0001-0002"
 
-    def submit(self):
-        # Read the token from the session file
-        with open("session.txt", "r") as file:
-            token = next(
-                line.split("=")[1].strip() for line in file if line.startswith("token")
-            )
+    def save_api_key_to_file(self, api_key):
+        with open("session.txt", "a") as file:
+            file.write(f"api_key={api_key}\n")
 
-        # Extract user input
+    def submit(self):
         mac_address = self.mac_address_entry.get()
         api_key = self.api_key_entry.get()
+        self.save_api_key_to_file(api_key)
 
-        # Call the verify_device method from APIConnector
+        token = ""
+        with open("session.txt", "r") as file:
+            for line in file:
+                if line.startswith("token"):
+                    token = line.split("=")[1].strip()
+
         response = self.api_connector.verify_device(mac_address, api_key, token)
         if response and response.get("success"):
-            # Initialize MQTT publisher and start publishing in a separate thread
             def start_mqtt():
                 project_directory = '/home/nayee001/Desktop/iotgui'
                 encryptor = DirectoryEncryptor(project_directory)
@@ -127,7 +125,6 @@ class VerifyDeviceScreen(tk.Frame):
                     publisher.client.disconnect()
 
             threading.Thread(target=start_mqtt, daemon=True).start()
-            
             messagebox.showinfo("Success", "Verification successful!")
             self.controller.switch_view("deviceGettingReady")
         else:
