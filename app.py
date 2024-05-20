@@ -13,4 +13,3 @@ class MainApp(tk.Tk):
 if __name__ == '__main__':
     app = MainApp()
     app.mainloop()
-    

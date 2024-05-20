@@ -94,13 +94,44 @@ class VerifyDeviceScreen(tk.Frame):
         return "A-B-C-0001-0002"
 
     def save_api_key_to_file(self, api_key):
-        with open("session.txt", "a") as file:
-            file.write(f"api_key={api_key}\n")
+        try:
+            # Read the current contents of the file
+            with open("session.txt", "r") as file:
+                lines = file.readlines()
+
+            # Check if 'api_key' is present and update it
+            api_key_present = False
+            for i, line in enumerate(lines):
+                if line.startswith("api_key="):
+                    lines[i] = f"api_key={api_key}\n"
+                    api_key_present = True
+                    break
+
+            # If 'api_key' was not present, append it
+            if not api_key_present:
+                lines.append(f"api_key={api_key}\n")
+
+            # Write the updated contents back to the file
+            with open("session.txt", "w") as file:
+                file.writelines(lines)
+
+            logging.info("API key saved successfully.")
+
+        except FileNotFoundError:
+            # If the file does not exist, create it and write the api_key
+            with open("session.txt", "w") as file:
+                file.write(f"api_key={api_key}\n")
+            logging.info("session.txt not found. Created new file and saved API key.")
+
+        except Exception as e:
+            logging.error(f"Error saving API key to file: {e}")
+            messagebox.showerror("Error", "Failed to save API key to file.")
+
 
     def submit(self):
         mac_address = self.mac_address_entry.get()
         api_key = self.api_key_entry.get()
-        self.save_api_key_to_file(api_key)
+        # self.save_api_key_to_file(api_key)
 
         token = ""
         with open("session.txt", "r") as file:
@@ -109,7 +140,8 @@ class VerifyDeviceScreen(tk.Frame):
                     token = line.split("=")[1].strip()
 
         response = self.api_connector.verify_device(mac_address, api_key, token)
-        if response and response.get("success"):
+        if response:
+            self.save_api_key_to_file(api_key)
             def start_mqtt():
                 project_directory = '/home/nayee001/Desktop/iotgui'
                 encryptor = DirectoryEncryptor(project_directory)
@@ -118,19 +150,19 @@ class VerifyDeviceScreen(tk.Frame):
                 try:
                     while True:
                         publisher.publish_data()
-                        time.sleep(1)  # Adjust sleep time if necessary
+                        time.sleep(5)  # Adjust sleep time if necessary
                 except KeyboardInterrupt:
                     logging.info("Stopping MQTT Publisher")
                 finally:
                     publisher.client.disconnect()
 
             threading.Thread(target=start_mqtt, daemon=True).start()
-            messagebox.showinfo("Success", "Verification successful!")
+            messagebox.showinfo("Success", "Please Wait.....")
             self.controller.switch_view("deviceGettingReady")
         else:
             error_message = (
                 response.get("message", "Failed to verify. Please try again.")
                 if response
-                else "API call failed."
+                else "Something went wrong."
             )
             messagebox.showerror("Error", error_message)
