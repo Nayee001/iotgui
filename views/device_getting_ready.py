@@ -1,10 +1,11 @@
+import logging
 import tkinter as tk
-from tkinter import PhotoImage, messagebox
+from tkinter import messagebox
 from common import constants
 import threading
 import paho.mqtt.client as paho
-import logging
 import json
+import os
 
 # MQTT configuration
 from mqtt.mqtt_credentials import broker_address, client_name, port, user, password
@@ -43,15 +44,16 @@ class DeviceGettingReadyScreen(tk.Frame):
 
     def get_api_key(self):
         try:
-            with open("session.txt", "r") as file:
-                for line in file:
-                    if line.startswith("api_key="):
-                        return line.split("=")[1].strip()
-        except FileNotFoundError:
-            logging.error("session.txt not found.")
+            if os.path.exists("session.json"):
+                with open("session.json", "r") as file:
+                    data = json.load(file)
+                    return data.get("api_key", None)
+            else:
+                logging.error("session.json not found.")
+                return None
         except Exception as e:
             logging.error(f"Error reading API key from file: {e}")
-        return None
+            return None
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -70,45 +72,46 @@ class DeviceGettingReadyScreen(tk.Frame):
 
         try:
             data = json.loads(message)
-            if "status" in data:  # Replace "status" with the actual key you're looking for
-                self.save_response_to_file(data["status"])
-                self.proceed_to_dashboard()
+            keys_of_interest = ["status", "device", "location", "timestamp"]
+
+            for key in keys_of_interest:
+                if key in data:
+                    self.save_response_to_file(key, data[key])
+                    if key == "status" and data[key].lower() == "verified":
+                        messagebox.showinfo("Device Accepted", "The device is Accepted.")
+                    self.proceed_to_dashboard()
+                
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding JSON: {e}")
 
-    def save_response_to_file(self, response):
+    def save_response_to_file(self, key, response):
         try:
             # Read the current contents of the file
-            with open("session.txt", "r") as file:
-                lines = file.readlines()
+            data = {}
+            if os.path.exists("session.json"):
+                with open("session.json", "r") as file:
+                    data = json.load(file)
 
-            # Check if 'response' is present and update it
-            response_present = False
-            for i, line in enumerate(lines):
-                if line.startswith("status="):  # Replace "status=" with the actual key
-                    lines[i] = f"status={response}\n"  # Replace "status" with the actual key
-                    response_present = True
-                    break
-
-            # If 'status' was not present, append it
-            if not response_present:
-                lines.append(f"status={response}\n")  # Replace "status" with the actual key
+            # Update the key-value pair
+            data[key] = response
 
             # Write the updated contents back to the file
-            with open("session.txt", "w") as file:
-                file.writelines(lines)
+            with open("session.json", "w") as file:
+                json.dump(data, file, indent=4)
 
-            logging.info("Response saved successfully.")
-
-        except FileNotFoundError:
-            # If the file does not exist, create it and write the response
-            with open("session.txt", "w") as file:
-                file.write(f"status={response}\n")  # Replace "status" with the actual key
-            logging.info("session.txt not found. Created new file and saved response.")
+            logging.info(f"{key} saved successfully.")
 
         except Exception as e:
-            logging.error(f"Error saving response to file: {e}")
-            messagebox.showerror("Error", " to save response to file.")
+            logging.error(f"Error saving {key} to file: {e}")
+            messagebox.showerror("Error", f"Failed to save {key} to file.")
 
     def proceed_to_dashboard(self):
         self.controller.switch_view('deviceDashboard')
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("Device Getting Ready")
+    controller = type('Controller', (object,), {'root': root})
+    app = DeviceGettingReadyScreen(controller)
+    app.pack(fill='both', expand=True)
+    root.mainloop()

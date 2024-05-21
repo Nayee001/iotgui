@@ -1,4 +1,0 @@
-session_active=True
-token=16|ViWSP52fWC9szEolzJ8AsBkAMJd0nS1pqt6ywDOJb1fe9f7a
-api_key=46269a
-status=Approve

@@ -1,9 +1,9 @@
 import tkinter as tk
-from tkinter import PhotoImage
-from common import constants, message
+from tkinter import PhotoImage, messagebox
+from common import constants
 from models.api_connector import APIConnector
-import time
-import threading
+import json
+import os
 
 class LoginScreen(tk.Frame):
     def __init__(self, controller):
@@ -52,7 +52,7 @@ class LoginScreen(tk.Frame):
         if result and 'token' in result:
             token = result['token']
             self.store_session(token)
-            tk.messagebox.showinfo("Login Successful", "You have logged in successfully!")
+            messagebox.showinfo("Login Successful", "You have logged in successfully!")
 
             self.after(3000, self.after_login)  # Use Tkinter's after for safe delay
         elif username == "" and password == "":
@@ -62,18 +62,24 @@ class LoginScreen(tk.Frame):
             self.error_label.config(text="Invalid username or password.")
 
     def after_login(self):
-        # This method now is expected to be called from the main thread
-        # Store session locally
-        # self.store_session()
         # Switch to the next screen
-        self.controller.switch_view('VerifyDevice')  # Proceed to verify device screen
-
+        self.controller.switch_view('verifyDevice')  # Proceed to verify device screen
 
     def store_session(self, token):
-        # Storing the bearer token in a file
-        print(token)
-        with open("session.txt", "w") as session_file:
-            session_file.write(f"session_active=True\ntoken={token}")
+        # Initialize an empty dictionary if session.json does not exist
+        session_data = {}
+        if os.path.exists("session.json"):
+            try:
+                with open("session.json", "r") as file:
+                    session_data = json.load(file)
+            except json.JSONDecodeError:
+                session_data = {}
+
+        session_data["session_active"] = True
+        session_data["token"] = token
+
+        with open("session.json", "w") as file:
+            json.dump(session_data, file, indent=4)
 
 if __name__ == '__main__':
     pass

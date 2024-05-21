@@ -36,7 +36,7 @@ class ConfigScreen(tk.Frame):
 
         # Right arrow button image
         self.right_button_image = PhotoImage(file='right.png')  # Replace with the correct path to the right arrow image
-        self.right_button = tk.Button(self, image=self.right_button_image, command=lambda: controller.switch_view('Login'), borderwidth=0, bg='white')
+        self.right_button = tk.Button(self, image=self.right_button_image, command=lambda: controller.switch_view('login'), borderwidth=0, bg='white')
         self.right_button.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor='se')
 
 

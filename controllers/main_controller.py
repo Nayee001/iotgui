@@ -6,6 +6,8 @@ from views.device_getting_ready import DeviceGettingReadyScreen
 from views.device_dashboard import DeviceDashboardScreen
 import re  # Import regular expressions
 import logging
+import json
+import os
 
 class MainController:
     def __init__(self, root):
@@ -36,27 +38,35 @@ class MainController:
 
     def check_session_and_initialize(self):
         try:
-            with open('session.txt', 'r') as file:
-                data = file.read()
-                logging.info("Session data read from file: %s", data)
+            if os.path.exists('session.json'):
+                with open('session.json', 'r') as file:
+                    data = json.load(file)
+                    logging.info("Session data read from file: %s", data)
 
-                session_active = 'session_active=True' in data
-                token_available = re.search(r'\d+\|[\w+]+', data) is not None  
-                device_approved = 'status=Approve' in data
+                    session_active = data.get('session_active', False)
+                    token_available = 'token' in data and bool(re.search(r'\d+\|[\w+]+', data['token']))
+                    device_approved = data.get('status', '').lower() == 'verified'
 
-            if device_approved:
-                self.initial_view = 'deviceDashboard'  # Ensure this matches the dictionary key exactly
-            elif session_active and token_available:
-                self.initial_view = 'verifyDevice'  # Ensure this matches the dictionary key exactly
-            elif session_active:
-                self.initial_view = 'login'  # Ensure this matches the dictionary key exactly
+                    if device_approved:
+                        self.initial_view = 'deviceDashboard'  # Ensure this matches the dictionary key exactly
+                    elif session_active and token_available:
+                        self.initial_view = 'verifyDevice'  # Ensure this matches the dictionary key exactly
+                    elif session_active:
+                        self.initial_view = 'login'  # Ensure this matches the dictionary key exactly
+                    else:
+                        self.initial_view = 'welcome'  # Ensure this matches the dictionary key exactly
+
+                    logging.info("Initial view set to: %s", self.initial_view)
             else:
-                self.initial_view = 'welcome'  # Ensure this matches the dictionary key exactly
-
-            logging.info("Initial view set to: %s", self.initial_view)
-        except FileNotFoundError:
-            logging.error("Error: session.txt file not found.")
+                logging.error("session.json file not found.")
         except Exception as e:
             logging.error(f"An error occurred while initializing: {e}")
 
         self.switch_view(self.initial_view)
+
+if __name__ == "__main__":
+    import tkinter as tk
+    root = tk.Tk()
+    root.title("Main Application")
+    controller = MainController(root)
+    root.mainloop()

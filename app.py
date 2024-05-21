@@ -2,7 +2,6 @@ import tkinter as tk
 from controllers.main_controller import MainController
 from common.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 
-
 class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
