@@ -5,12 +5,13 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.animation as animation
 import numpy as np
-import paho.mqtt.client as mqtt
-from mqtt.mqtt_credentials import broker_address, client_name, port, user, password, topic
 from datetime import datetime
 import json
 import os
 import logging
+import multiprocessing
+import time
+from mqtt.mqtt_receiver import mqtt_receiver   # Import the mqtt_receiver script
 
 class DeviceDashboardScreen(tk.Frame):
     def __init__(self, controller):
@@ -56,7 +57,8 @@ class DeviceDashboardScreen(tk.Frame):
 
         # If status is approved, trigger MQTT subscription
         if status['status'].lower() == 'verified':
-            self.setup_mqtt()
+            self.mqtt_process = self.run_mqtt_receiver()
+        self.mqtt_process = self.run_mqtt_receiver()
 
     def read_session_file(self):
         session_data = {}
@@ -107,41 +109,14 @@ class DeviceDashboardScreen(tk.Frame):
         self.ax.autoscale_view()
         self.canvas.draw()
 
-    def setup_mqtt(self):
-        self.mqtt_client = mqtt.Client(client_name)
-        self.mqtt_client.username_pw_set(user, password)
-        self.mqtt_client.on_connect = self.on_connect
-        self.mqtt_client.on_message = self.on_message
-        self.mqtt_client.connect(broker_address, port, 60)
-        self.mqtt_client.loop_start()
-
-    def on_connect(self, client, userdata, flags, rc):
-        print("Connected with result code " + str(rc))
-        # Subscribe to a topic
-        client.subscribe(topic)
-
-    def on_message(self, client, userdata, msg):
-        print(msg.topic + " " + str(msg.payload))
-        # Process the received data and update the chart
-        try:
-            data = float(msg.payload.decode())
-            self.update_live_data(data)
-        except ValueError:
-            print("Error: Could not convert MQTT message to float")
-
-    def update_live_data(self, new_data):
-        # Shift the x_data and append the new data point
-        self.x_data = np.roll(self.x_data, -1)
-        self.x_data[-1] = self.x_data[-1] + np.pi / 50
-        # Append new data to y_data
-        self.y_data = np.roll(self.y_data, -1)
-        self.y_data[-1] = new_data
-        self.line.set_ydata(self.y_data)
-        self.ax.relim()
-        self.ax.autoscale_view()
-        self.canvas.draw()
+    def run_mqtt_receiver(self):
+        process = multiprocessing.Process(target=mqtt_receiver)
+        process.daemon = True
+        process.start()
+        return process
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     root = tk.Tk()
     root.title("Device Dashboard")
     controller = type('Controller', (object,), {'root': root})
