@@ -5,81 +5,92 @@ from models.api_connector import APIConnector
 import json
 import os
 
+SESSION_FILE = "session.json"
+FONT_NAME = "Arial"
+PADDING_X = 150
+
 class LoginScreen(tk.Frame):
     def __init__(self, controller):
         super().__init__(controller.root, width=constants.SCREEN_WIDTH, height=constants.SCREEN_HEIGHT, bg='white')
         self.controller = controller
         self.api_connector = APIConnector("http://172.20.120.101")
 
+        # Load images
+        self.logo_image = PhotoImage(file='iot.png')  # Replace with actual path
+        self.left_arrow_image = PhotoImage(file='left.png')  # Replace with actual path
+
+        self.setup_ui()
+
+    def setup_ui(self):
         # Logo and Title
-        self.logo_image = PhotoImage(file='iot.png')  # Replace with the correct path to the logo
-        logo_label = tk.Label(self, image=self.logo_image, bg='white')
-        logo_label.pack(pady=(30, 10))
-        title_label = tk.Label(self, text="Login to Device", font=("Arial", 24), bg='white')
-        title_label.pack(pady=(5, 20))
+        tk.Label(self, image=self.logo_image, bg='white').pack(pady=(30, 10))
+        tk.Label(self, text="Login to Device", font=(FONT_NAME, 24), bg='white').pack(pady=(5, 20))
 
         # Username Entry
-        tk.Label(self, text="Username", font=("Arial", 16), bg='white').pack(anchor='w', padx=(150, 0))
-        self.username_entry = tk.Entry(self, font=("Arial", 16), width=20)
-        self.username_entry.pack(pady=(5, 10), padx=150)
+        tk.Label(self, text="Username", font=(FONT_NAME, 16), bg='white').pack(anchor='w', padx=(PADDING_X, 0))
+        self.username_entry = tk.Entry(self, font=(FONT_NAME, 16), width=25)
+        self.username_entry.pack(pady=(5, 10), padx=PADDING_X)
 
         # Password Entry
-        tk.Label(self, text="Password", font=("Arial", 16), bg='white').pack(anchor='w', padx=(150, 0))
-        self.password_entry = tk.Entry(self, font=("Arial", 16), width=20, show='*')
-        self.password_entry.pack(pady=(5, 20), padx=150)
+        tk.Label(self, text="Password", font=(FONT_NAME, 16), bg='white').pack(anchor='w', padx=(PADDING_X, 0))
+        self.password_entry = tk.Entry(self, font=(FONT_NAME, 16), width=25, show='*')
+        self.password_entry.pack(pady=(5, 20), padx=PADDING_X)
 
-        # Error Message Label (Initially hidden)
-        self.error_label = tk.Label(self, text="", font=("Arial", 16), fg='red', bg='white')
-        self.error_label.pack(pady=(5, 10), padx=150)
+        # Error Message
+        self.error_label = tk.Label(self, text="", font=(FONT_NAME, 14), fg='red', bg='white')
+        self.error_label.pack(pady=(5, 10), padx=PADDING_X)
 
         # Login Button
-        login_button = tk.Button(self, text="Login", font=("Arial", 16), bg='#3C7DD9', fg='white', command=self.login)
+        login_button = tk.Button(self, text="Login", font=(FONT_NAME, 16), bg='#3C7DD9', fg='white', command=self.login)
         login_button.pack(pady=(10, 20), ipadx=10, ipady=5)
 
-        # Left arrow button image for going back
-        left_arrow_image = PhotoImage(file='left.png')  # Replace with the correct path
-        left_button = tk.Button(self, image=left_arrow_image, command=lambda: controller.switch_view('config'), borderwidth=0, bg='white')
-        left_button.image = left_arrow_image  # Keep a reference so it's not garbage collected
-        left_button.place(x=20, y=constants.SCREEN_HEIGHT-30)
+        # Back button
+        back_button = tk.Button(self, image=self.left_arrow_image, command=lambda: self.controller.switch_view('config'), borderwidth=0, bg='white')
+        back_button.image = self.left_arrow_image
+        back_button.place(x=20, y=constants.SCREEN_HEIGHT - 50)
 
         self.pack_propagate(False)
 
     def login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-        result = self.api_connector.login(username, password)
-        
-        if result and 'token' in result:
-            token = result['token']
-            self.store_session(token)
-            messagebox.showinfo("Login Successful", "You have logged in successfully!")
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
 
-            self.after(3000, self.after_login)  # Use Tkinter's after for safe delay
-        elif username == "" and password == "":
-            self.error_label.config(text="Enter Username Password.")
+        self.error_label.config(text="")  # Clear any previous errors
+
+        if not username or not password:
+            self.error_label.config(text="Enter username and password.")
+            return
+
+        result = self.api_connector.login(username, password)
+
+        if result and 'token' in result:
+            self.store_session(result['token'])
+            messagebox.showinfo("Login Successful", "You have logged in successfully!")
+            self.after(1500, self.after_login)  # 1.5 sec delay before switching
         else:
-            # Show error message
             self.error_label.config(text="Invalid username or password.")
 
     def after_login(self):
-        # Switch to the next screen
-        self.controller.switch_view('verifyDevice')  # Proceed to verify device screen
+        self.controller.switch_view('verifyDevice')
 
     def store_session(self, token):
-        # Initialize an empty dictionary if session.json does not exist
-        session_data = {}
-        if os.path.exists("session.json"):
-            try:
-                with open("session.json", "r") as file:
-                    session_data = json.load(file)
-            except json.JSONDecodeError:
-                session_data = {}
+        session_data = self.load_session_data()
+        session_data.update({
+            "session_active": True,
+            "token": token
+        })
 
-        session_data["session_active"] = True
-        session_data["token"] = token
-
-        with open("session.json", "w") as file:
+        with open(SESSION_FILE, "w") as file:
             json.dump(session_data, file, indent=4)
+
+    def load_session_data(self):
+        if os.path.exists(SESSION_FILE):
+            try:
+                with open(SESSION_FILE, "r") as file:
+                    return json.load(file)
+            except json.JSONDecodeError:
+                return {}
+        return {}
 
 if __name__ == '__main__':
     pass
